@@ -10,6 +10,10 @@ import picocli.CommandLine.Spec;
 @Command(name = "--help", description = "display this help and exit", helpCommand = true)
 public class HelpCommand implements Callable<Integer> {
 
+	public HelpCommand() {
+		super();
+	}
+
 	@Spec
 	private CommandSpec spec;
 

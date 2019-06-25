@@ -77,12 +77,12 @@ public class CheckSumApp implements Callable<Integer> {
 
 	@Override
 	public Integer call() throws Exception {
-		if (files == null || files.length == 0) {
+		if (files == null || files.length == 0 || (files.length == 1 && "-".equals(files[0].getName()))) {
 			System.out.println(DigestUtils.md5Hex(System.in));
 		} else {
 			Stream.of(files).parallel().forEach(file -> {
 				try (InputStream inputStream = new FileInputStream(file)) {
-					System.out.printf("%s *%s", DigestUtils.md5Hex(inputStream), file.getName());
+					System.out.printf("%s *%s\n", DigestUtils.md5Hex(inputStream), file.getName());
 				} catch (Exception ex) {
 					throw new RuntimeException(ex);
 				}
