@@ -27,14 +27,19 @@ $ docker run --rm -it md5sumj
 ```
 ---
 
-## To generate metadata for the native-image process, I force the tool to run alongside with a special agent:
+## Docker base image
+I am using frolvlad/alpine-glibc as a base image because the native-image tool generates binaries linked to libc but the standard alpine image uses muslc. 
+
+## To generate metadata for the native-image process, I force the "uber-jar" to be executed at least once on a GraalVM-enabled JDK alongside with a special agent:
 java -agentlib:native-image-agent=config-output-dir=src/main/resources/META-INF/native-image -jar ./target/md5sumj.jar --help
 
 java -agentlib:native-image-agent=config-merge-dir=src/main/resources/META-INF/native-image -jar ./target/md5sumj.jar --version
 
 See [this article](https://medium.com/graalvm/introducing-the-tracing-agent-simplifying-graalvm-native-image-configuration-c3b56c486271) for more help.
 
-## To compress executable with upx (further reduces size, but increases loading time)
+## To compress executable with upx (this further reduces size, but increases loading time)
+```
 $ apt-get install upx-ucl
 $ upx --ultra-brute md5sumj
-
+```
+---
