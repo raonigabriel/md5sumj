@@ -8,11 +8,11 @@ RUN mvn dependency:go-offline
 # After that, we copy the actual project file and build it using offline mode.
 COPY . .
 RUN mvn -o clean package && \
-    native-image --no-server --static -H:Name=md5sumj -H:NumberOfThreads=8 \
-    -H:IncludeResources=git.properties -jar ./target/md5sumj.jar && \
-    strip md5sumj && chmod +x md5sumj && ls -la
+    native-image --no-server -jar ./target/md5sumj.jar && \
+    strip md5sumj && ls -la
 
-# We generate a two-layer image, with just our binary. No Alpine, no bash, nothing else!
-FROM debian:stretch-slim
-COPY --from=builder /md5sumj/md5sumj /md5sumj
-CMD ["./md5sumj --help"]
+# We generate a four-layer image, with the binary generated on the "builder" stage
+FROM frolvlad/alpine-glibc
+COPY --from=builder /md5sumj/md5sumj /bin/md5sumj
+ENTRYPOINT ["/bin/md5sumj"]
+CMD ["--help"]
