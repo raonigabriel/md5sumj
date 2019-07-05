@@ -5,7 +5,7 @@
 
 	<groupId>com.github.raonigabriel</groupId>
 	<artifactId>md5sumj</artifactId>
-	<version>0.0.4</version>
+	<version>1.0.0</version>
 	<packaging>jar</packaging>
 
 	<name>md5sumj</name>
@@ -22,6 +22,20 @@
 	<scm>
 		<url>https://github.com/raonigabriel/md5sumj</url>
 	</scm>
+
+	<developers>
+		<developer>
+			<id>raonigabriel</id>
+			<name>Raoni Gabriel</name>
+			<timezone>-3</timezone>
+			<url>https://github.com/raonigabriel</url>
+			<roles>
+				<role>Java Software Architect</role>
+				<role>Cloud Solutions Architect</role>
+				<role>DevOps Engineer</role>
+			</roles>
+		</developer>
+	</developers>
 
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
