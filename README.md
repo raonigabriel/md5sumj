@@ -23,7 +23,7 @@ And if you like this project, please click the **Star** button above! It helps m
 - Docker [multi-stage build](https://docs.docker.com/develop/develop-images/multistage-build/)
 
 
-## Clone and build (with Maven):
+## Clone and build with Maven (any JDK >= 1.8 will suffice):
 ```
 $ git clone https://github.com/raonigabriel/md5sumj.git
 $ cd md5sumj
@@ -32,18 +32,22 @@ $ ls -la ./target
 ```
 ---
 
-## To generate native binary (with native-image):
+## Then we generate the native binary using with native-image (GraalVM is required):
 ```
-$ git clone https://github.com/raonigabriel/md5sumj.git
-$ cd md5sumj
-$ mvn clean package
-$ native-image --no-server -jar ./target/md5sumj.jar
-$ strip md5sumj
+$ native-image -H:+ReportUnsupportedElementsAtRuntime --no-server --static -jar ./target/md5sumj.jar
 $ ls -la
 ```
 ---
 
-
+## Optional steps: this further reduces the executable size from ~12MB down to 3MB.
+### UPX is an executable compressor which unpacks the file before each execution thus this increases loading time a bit.
+```
+$ strip md5sumj
+$ sudo apt-get install upx-ucl
+$ upx --ultra-brute md5sumj
+$ ls -la
+```
+---
 
 ## You have Docker installed? Much easier! Just do as follows:
 ```
@@ -54,35 +58,32 @@ $ docker build . -t md5sumj
 $ docker images
 ...
 REPOSITORY          TAG         IMAGE ID        CREATED         SIZE
-md5sumj             latest      26026b086996    28 seconds ago  23.3MB
+md5sumj             latest      26026b086996    28 seconds ago  8.56MB
 ...
-$ docker run --rm -it md5sumj
+$ docker run --rm -it md5sumj sh
+root@8bbf16bce0ee:/# md5sumj --version
 ```
 ---
 
 ## Some details:
 
 ### Docker base image
-I am using [frolvlad/alpine-glibc](https://hub.docker.com/r/frolvlad/alpine-glibc) as a base image because the **native-image** tool generates binaries linked to **libc** but the standard alpine image comes **muslc**. Therefore, we need a custom alpine with **libc** properly installed. 
+We are back using [alpine](https://hub.docker.com/_/alpine) as the base image since the executable is now being statically linked, meaning we don't need shared libs.
 
-### To generate metadata for the native-image process, I force the "uber-jar" to be executed at least once on a GraalVM-enabled JDK alongside with a special agent:
-```
-java -agentlib:native-image-agent=config-output-dir=src/main/resources/META-INF/native-image -jar ./target/md5sumj.jar --help
-
-java -agentlib:native-image-agent=config-merge-dir=src/main/resources/META-INF/native-image -jar ./target/md5sumj.jar --version
-```
-
-See [this article](https://medium.com/graalvm/introducing-the-tracing-agent-simplifying-graalvm-native-image-configuration-c3b56c486271) for more help.
-
-## To compress executable with upx (this further reduces size, but increases loading time)
-```
-$ apt-get install upx-ucl
-$ upx --ultra-brute md5sumj
-```
 ---
+
+### To generate metadata for the native-image process, we force the "uber-jar" to be executed at least once on a GraalVM-enabled JDK alongside with a special agent:
+```
+$ java -agentlib:native-image-agent=config-output-dir=src/main/resources/META-INF/native-image -jar ./target/md5sumj.jar --help
+$ java -agentlib:native-image-agent=config-merge-dir=src/main/resources/META-INF/native-image -jar ./target/md5sumj.jar --version
+```
+
+See [this article](https://medium.com/graalvm/introducing-the-tracing-agent-simplifying-graalvm-native-image-configuration-c3b56c486271) for more help on this.
 
 ## TO-DO:
 - Apply ProGuard, to optimize / obfuscate the generated JAR and maybe reduce the native binary size and loading times.
 - Use **--initialize-at-build-time** option. This will probably allow us to optimize our **--version** command and avoid the requirement of having **nanojson**.
+- Generate a debian package (*.deb)
+- Implement all the missing features (--binary, --check, and so forth)
 - Windows native binary support
 - Mac native binary support

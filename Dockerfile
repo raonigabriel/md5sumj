@@ -8,11 +8,9 @@ RUN mvn dependency:go-offline
 # After that, we copy the actual project file and build it using offline mode.
 COPY . .
 RUN mvn -o clean package && \
-    native-image --no-server -jar ./target/md5sumj.jar && \
-    strip md5sumj && ls -la
+    native-image --no-server --static -jar ./target/md5sumj.jar && \
+    strip md5sumj && upx --ultra-brute md5sumj && ls -la
 
-# We generate a four-layer image, with the binary generated on the "builder" stage
-FROM frolvlad/alpine-glibc
+# We generate a two-layer image, with the binary generated from the "builder" stage
+FROM alpine:latest
 COPY --from=builder /md5sumj/md5sumj /bin/md5sumj
-ENTRYPOINT ["/bin/md5sumj"]
-CMD ["--help"]

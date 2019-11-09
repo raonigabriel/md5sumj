@@ -21,7 +21,7 @@ public class VersionCommand implements Callable<Integer> {
 				+ " build " + obj.getString("git.commit.id.abbrev");
 		}
 		
-		System.out.printf("md5sumj %s\n", version);
+		System.out.printf(CheckSumApp.APP_NAME + " %s\n", version);
 		System.out.println("Written by Raoni Gabriel");
 		System.out.println();
 		System.out.println("Copyright (C) 2019 Raoni Gabriel.");

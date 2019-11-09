@@ -2,6 +2,8 @@ package com.github.raonigabriel;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.Arrays;
 import java.util.concurrent.Callable;
@@ -15,8 +17,8 @@ import picocli.CommandLine.Model.UsageMessageSpec;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 
-@Command(name= "md5sumj",  sortOptions = false, subcommands = {HelpCommand.class, VersionCommand.class},
-customSynopsis = {"md5sumj [OPTION]... [FILE]...", "Print or check MD5 (128-bit) checksums."},
+@Command(name = CheckSumApp.APP_NAME,  sortOptions = false, subcommands = {HelpCommand.class, VersionCommand.class},
+customSynopsis = {CheckSumApp.APP_NAME + " [OPTION]... [FILE]...", "Print or check MD5 (128-bit) checksums."},
 optionListHeading = "%nWith no FILE, or when FILE is -, read standard input.%n%n",
 descriptionHeading = "%nThe following five options are useful only when verifying checksums:%n",
 description = {
@@ -33,6 +35,8 @@ footer = "%nThe sums are computed as described in RFC 1321.  When checking, the 
 		"' ' for text or where binary is insignificant), and name for each FILE.")
 public class CheckSumApp implements Callable<Integer> {
 
+	static final String APP_NAME = "md5sumj";
+	
 	@Parameters(paramLabel = "FILE", description = "one ore more files to archive", defaultValue = "-", hidden = true)
 	File[] files;
 
@@ -81,10 +85,16 @@ public class CheckSumApp implements Callable<Integer> {
 			System.out.println(DigestUtils.md5Hex(System.in) + "  -");
 		} else {
 			Stream.of(files).parallel().forEach(file -> {
-				try (InputStream inputStream = new FileInputStream(file)) {
-					System.out.printf("%s %s\n", DigestUtils.md5Hex(inputStream), file.getName());
-				} catch (Exception ex) {
-					throw new RuntimeException(ex);
+				if (file.isDirectory()) {
+					System.out.printf(APP_NAME + ": %s: Is a directory\n", file.getName());
+				} else {
+					try (InputStream inputStream = new FileInputStream(file)) {
+						System.out.printf("%s %s\n", DigestUtils.md5Hex(inputStream), file.getName());
+					} catch (FileNotFoundException fnf) {
+						System.out.printf(APP_NAME + ": %s: No such file or directory\n", file.getName());
+					} catch (IOException e) {
+						System.out.printf(APP_NAME + ": %s: Permission denied\n", file.getName());
+					}
 				}
 			});
 		}
