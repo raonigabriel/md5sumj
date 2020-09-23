@@ -171,7 +171,7 @@
 						<configuration>
 							<mainClass>${mainClass}</mainClass>
 							<imageName>md5sumj</imageName>
-							<buildArgs>--no-server --static --libc=musl --no-fallback</buildArgs>
+							<buildArgs>--no-server --static --libc=musl --no-fallback --initialize-at-build-time</buildArgs>
 							<skip>${skipNativeImage}</skip>
 						</configuration>
 					</execution>
