@@ -5,7 +5,7 @@
 
 	<groupId>com.github.raonigabriel</groupId>
 	<artifactId>md5sumj</artifactId>
-	<version>1.1.0</version>
+	<version>1.2.0</version>
 	<packaging>jar</packaging>
 
 	<name>md5sumj</name>
@@ -43,49 +43,57 @@
 		<java.version>1.8</java.version>
 		<maven.compiler.source>${java.version}</maven.compiler.source>
 		<maven.compiler.target>${java.version}</maven.compiler.target>
+		<mainClass>com.github.raonigabriel.CheckSumApp</mainClass>
 	</properties>
 
 	<dependencies>
 		<dependency>
 			<groupId>commons-codec</groupId>
 			<artifactId>commons-codec</artifactId>
-			<version>1.12</version>
+			<version>1.15</version>
 		</dependency>
 		<dependency>
 			<groupId>info.picocli</groupId>
 			<artifactId>picocli</artifactId>
-			<version>4.0.4</version>
-		</dependency>
-		<dependency>
-			<groupId>com.grack</groupId>
-			<artifactId>nanojson</artifactId>
-			<version>1.4</version>
+			<version>4.5.1</version>
 		</dependency>
 	</dependencies>
 
 	<build>
+		<resources>
+			<resource>
+				<directory>src/main/resources</directory>
+				<filtering>false</filtering>
+			</resource>
+			<resource>
+				<directory>src/deb/control</directory>
+				<filtering>true</filtering>
+				<targetPath>${project.build.directory}/control</targetPath>
+			</resource>
+		</resources>
+
 		<pluginManagement>
 			<plugins>
 				<!--Plugin to help us go offline -->
 				<plugin>
 					<groupId>org.apache.maven.plugins</groupId>
 					<artifactId>maven-dependency-plugin</artifactId>
-					<version>3.1.1</version>
-				</plugin>			
+					<version>3.1.2</version>
+				</plugin>
 				<!-- Plugin to grab git information and store that into a file -->
 				<plugin>
 					<groupId>pl.project13.maven</groupId>
 					<artifactId>git-commit-id-plugin</artifactId>
-					<version>3.0.0</version>
+					<version>4.0.2</version>
 				</plugin>
 				<!-- Plugin to pack everything as a single executable JAR -->
 				<plugin>
 					<groupId>org.apache.maven.plugins</groupId>
 					<artifactId>maven-shade-plugin</artifactId>
-					<version>3.2.1</version>
-				</plugin>				
+					<version>3.2.4</version>
+				</plugin>
 			</plugins>
-		
+
 		</pluginManagement>
 		<plugins>
 			<plugin>
@@ -109,7 +117,7 @@
 					<verbose>false</verbose>
 					<generateGitPropertiesFile>true</generateGitPropertiesFile>
 					<generateGitPropertiesFilename>${project.build.outputDirectory}/git.properties</generateGitPropertiesFilename>
-					<format>json</format>
+					<format>properties</format>
 					<gitDescribe>
 						<skip>false</skip>
 						<always>false</always>
@@ -131,9 +139,114 @@
 							<transformers>
 								<transformer
 									implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-									<mainClass>com.github.raonigabriel.CheckSumApp</mainClass>
+									<mainClass>${mainClass}</mainClass>
 								</transformer>
 							</transformers>
+							<filters>
+								<filter>
+									<artifact>*:*</artifact>
+									<excludes>
+										<exclude>META-INF/maven/**</exclude>
+										<exclude>META-INF/MANIFEST.MF</exclude>
+									</excludes>
+								</filter>
+							</filters>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+
+			<!-- This plugin will create the actual native binary. -->
+			<plugin>
+				<groupId>org.graalvm.nativeimage</groupId>
+				<artifactId>native-image-maven-plugin</artifactId>
+				<version>20.2.0</version>
+				<executions>
+					<execution>
+						<id>build-binary</id>
+						<phase>package</phase>
+						<goals>
+							<goal>native-image</goal>
+						</goals>
+						<configuration>
+							<mainClass>${mainClass}</mainClass>
+							<imageName>md5sumj</imageName>
+							<buildArgs>--no-server --static --libc=musl --no-fallback</buildArgs>
+							<skip>${skipNativeImage}</skip>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+
+			<plugin>
+				<groupId>org.codehaus.mojo</groupId>
+				<artifactId>exec-maven-plugin</artifactId>
+				<version>3.0.0</version>
+				<executions>
+					<!-- Then we strip (remove symbols) the binary -->
+					<execution>
+						<id>strip-binary</id>
+						<phase>package</phase>
+						<goals>
+							<goal>exec</goal>
+						</goals>
+						<configuration>
+							<skip>${skipNativeImage}</skip>
+							<executable>strip</executable>
+							<workingDirectory>${project.build.directory}</workingDirectory>
+							<arguments>
+								<argument>md5sumj</argument>
+							</arguments>
+						</configuration>
+					</execution>
+					<!-- Then we pack the binary using upx -->
+					<execution>
+						<id>pack-binary</id>
+						<phase>package</phase>
+						<goals>
+							<goal>exec</goal>
+						</goals>
+						<configuration>
+							<skip>${skipNativeImage}</skip>
+							<executable>upx</executable>
+							<workingDirectory>${project.build.directory}</workingDirectory>
+							<arguments>
+								<argument>--ultra-brute</argument>
+								<argument>md5sumj</argument>
+							</arguments>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+
+			<!-- Finally, we will generate a deb package with the native binary -->
+			<plugin>
+				<artifactId>jdeb</artifactId>
+				<groupId>org.vafer</groupId>
+				<version>1.8</version>
+				<executions>
+					<execution>
+						<id>build-deb</id>
+						<phase>package</phase>
+						<goals>
+							<goal>jdeb</goal>
+						</goals>
+						<configuration>
+							<skip>${skipNativeImage}</skip>
+							<compression>none</compression>
+							<controlDir>${project.build.directory}/control</controlDir>
+							<deb>[[buildDir]]/[[artifactId]]_[[version]]_amd64.[[extension]]</deb>
+							<dataSet>
+								<data>
+									<src>${project.build.directory}/${project.artifactId}</src>
+									<type>file</type>
+									<mapper>
+										<type>perm</type>
+										<prefix>/usr/bin</prefix>
+										<filemode>755</filemode>
+									</mapper>
+								</data>
+							</dataSet>
 						</configuration>
 					</execution>
 				</executions>
