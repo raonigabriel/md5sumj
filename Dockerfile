@@ -16,5 +16,4 @@ RUN mvn -o clean package
 # We generate a small image, with the binary generated from the "builder" stage
 FROM scratch
 COPY --from=builder /home/graalvm/md5sumj/target/md5sumj /bin/md5sumj
-CMD ["--version"]
 ENTRYPOINT ["/bin/md5sumj"]
