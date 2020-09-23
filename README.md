@@ -18,7 +18,6 @@ And if you like this project, please click the **Star** button above! It helps m
 - External 3d party library ([piccocli](https://picocli.info/)) for almost identical cli interface as the original "md5sum" tool
 - Version information is generated from git metadata using ([git-commit-id-plugin]([https://github.com/git-commit-id/maven-git-commit-id-plugin])) to a **git.properties** resource file
 - Resource (**git.properties**) is embedded into native binary
-- External 3d party library ([nanojson](https://github.com/mmastrac/nanojson)) to  read and parse embedded **git.properties**.
 - "Fat" JAR generated using [maven-shade-plugin](https://maven.apache.org/plugins/maven-shade-plugin/)
 - Docker [multi-stage build](https://docs.docker.com/develop/develop-images/multistage-build/)
 
@@ -38,8 +37,15 @@ $ native-image -H:+ReportUnsupportedElementsAtRuntime --no-server --static -jar 
 $ ls -la
 ```
 ---
+## If you have GraalVM >= 20.2.0 java11 version, with musl-gcc you can [statically link to muslc](https://www.graalvm.org/release-notes/20_2/#native-image):
+```
+$ native-image -H:+ReportUnsupportedElementsAtRuntime --no-server --static --libc=musl -jar ./target/md5sumj.jar
+$ ls -la
+```
+Hint: my [raonigabriel/graalvm-playground:java11](https://github.com/raonigabriel/graalvm-playground) docker image has everything ready for that.
 
-## Optional steps: this further reduces the executable size from ~12MB down to 3MB.
+---
+## Optional steps: this further reduces the executable size from ~12MB down to ~3MB.
 ### UPX is an executable compressor which unpacks the file before each execution thus this increases loading time a bit.
 ```
 $ strip md5sumj
@@ -58,32 +64,35 @@ $ docker build . -t md5sumj
 $ docker images
 ...
 REPOSITORY          TAG         IMAGE ID        CREATED         SIZE
-md5sumj             latest      26026b086996    28 seconds ago  8.56MB
+md5sumj             latest      26026b086996    28 seconds ago  3.46MB
 ...
-$ docker run --rm -it md5sumj sh
-root@8bbf16bce0ee:/# md5sumj --version
+$ docker run --rm -it md5sumj --version
+md5sumj 1.2.0 build c0a076c
+...
 ```
 ---
-
+## Since the generated image is executable, you can create a nice alias like:
+```
+alias md5sumj="docker run --rm --user $(id -u):$(id -g) --workdir $(pwd) -it -v $(pwd):$(pwd) md5sumj $@"
+```
+---
 ## Some details:
 
 ### Docker base image
-We are back using [alpine](https://hub.docker.com/_/alpine) as the base image since the executable is now being statically linked, meaning we don't need shared libs.
+We are using [scratch](https://hub.docker.com/_/scratch) as the base image since the executable is now being **statically** linked with muslc, meaning [we don't need shared libs!](https://codeburst.io/docker-from-scratch-2a84552470c8)
 
 ---
 
 ### To generate metadata for the native-image process, we force the "uber-jar" to be executed at least once on a GraalVM-enabled JDK alongside with a special agent:
 ```
-$ java -agentlib:native-image-agent=config-output-dir=src/main/resources/META-INF/native-image -jar ./target/md5sumj.jar --help
-$ java -agentlib:native-image-agent=config-merge-dir=src/main/resources/META-INF/native-image -jar ./target/md5sumj.jar --version
+$ java -agentlib:native-image-agent=config-output-dir=src/main/resources/META-INF/native-image/com.github.raonigabriel/md5sumj -jar ./target/md5sumj.jar --help
+$ java -agentlib:native-image-agent=config-merge-dir=src/main/resources/META-INF/native-image/com.github.raonigabriel/md5sumj -jar ./target/md5sumj.jar --version
 ```
 
 See [this article](https://medium.com/graalvm/introducing-the-tracing-agent-simplifying-graalvm-native-image-configuration-c3b56c486271) for more help on this.
 
 ## TO-DO:
 - Apply ProGuard, to optimize / obfuscate the generated JAR and maybe reduce the native binary size and loading times.
-- Use **--initialize-at-build-time** option. This will probably allow us to optimize our **--version** command and avoid the requirement of having **nanojson**.
-- Generate a debian package (*.deb)
 - Implement all the missing features (--binary, --check, and so forth)
 - Windows native binary support
 - Mac native binary support
